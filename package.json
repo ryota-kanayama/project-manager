@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "lint": "cd frontend && npx biome lint ./src && cd .. && cd backend && golangci-lint run ./..."
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

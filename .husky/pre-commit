@@ -1,0 +1,48 @@
+exec 2>&1
+
+# mise で管理しているツール (node, go, golangci-lint) を PATH に追加
+if [ -n "$LOCALAPPDATA" ]; then
+    # Windows
+    export PATH="$LOCALAPPDATA/mise/shims:$PATH"
+else
+    # macOS / Linux
+    export PATH="$HOME/.local/share/mise/shims:$PATH"
+fi
+
+echo "=== Pre-commit hook: Running linters ==="
+
+ERRORS=0
+
+# Frontend: Biome lint
+echo ""
+echo "[Frontend] Running biome lint..."
+cd frontend
+npx biome lint ./src
+if [ $? -ne 0 ]; then
+    echo "[Frontend] Lint failed!"
+    ERRORS=1
+else
+    echo "[Frontend] Lint passed."
+fi
+cd ..
+
+# Backend: golangci-lint
+echo ""
+echo "[Backend] Running golangci-lint..."
+cd backend
+golangci-lint run ./...
+if [ $? -ne 0 ]; then
+    echo "[Backend] Lint failed!"
+    ERRORS=1
+else
+    echo "[Backend] Lint passed."
+fi
+cd ..
+
+echo ""
+if [ $ERRORS -ne 0 ]; then
+    echo "=== Commit blocked: Fix lint errors before committing ==="
+    exit 1
+fi
+
+echo "=== All linters passed. Committing... ==="
