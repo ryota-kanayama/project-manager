@@ -1,7 +1,15 @@
 .vscode
-.env
 .DS_Store
 node_modules/
 
+# Env
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env*.local
+
 # Backend
 backend/tmp/
+
+# Local PostgreSQL (managed by mise)
+.postgres/

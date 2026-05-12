@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -77,7 +78,7 @@ func main() {
 	}
 
 	go func() {
-		slog.Info("server starting", "port", port)
+		slog.Info("server starting", "url", fmt.Sprintf("http://localhost:%s", port))
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			panic(err)
 		}

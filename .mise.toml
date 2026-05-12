@@ -2,3 +2,33 @@
 node = "24"
 go = "1.25"
 golangci-lint = "2"
+postgres = "18"
+
+[env]
+PGDATA = "{{config_root}}/.postgres/data"
+PGHOST = "localhost"
+PGPORT = "15432"
+PGUSER = "postgres"
+
+[tasks."db:init"]
+description = "PostgreSQL データディレクトリの初期化と DB 作成"
+run = """
+set -e
+if [ ! -d "$PGDATA" ]; then
+  initdb -U "$PGUSER" -E UTF8 --locale=C
+fi
+pg_ctl -D "$PGDATA" status > /dev/null 2>&1 || pg_ctl -D "$PGDATA" -l "$PGDATA/postgres.log" -o "-p $PGPORT" start
+createdb -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" project_manager 2>/dev/null || true
+"""
+
+[tasks."db:start"]
+description = "PostgreSQL を起動"
+run = 'pg_ctl -D "$PGDATA" -l "$PGDATA/postgres.log" -o "-p $PGPORT" start'
+
+[tasks."db:stop"]
+description = "PostgreSQL を停止"
+run = 'pg_ctl -D "$PGDATA" stop'
+
+[tasks."db:status"]
+description = "PostgreSQL の状態を表示"
+run = 'pg_ctl -D "$PGDATA" status'
