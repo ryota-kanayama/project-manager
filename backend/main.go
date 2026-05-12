@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"log"
+	"flag"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,25 +15,36 @@ import (
 	"project-manager/schema"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 var pool *pgxpool.Pool
 
 func main() {
+	envFile := flag.String("env", "", "path to .env file (optional)")
+	flag.Parse()
+
+	if *envFile != "" {
+		if err := godotenv.Load(*envFile); err != nil {
+			panic(err)
+		}
+		slog.Info("loaded env file", "path", *envFile)
+	}
+
 	ctx := context.Background()
 
 	// データベース接続
 	var err error
 	pool, err = database.Connect(ctx)
 	if err != nil {
-		log.Fatalf("Database connection failed: %v", err)
+		panic(err)
 	}
 	defer pool.Close()
-	log.Println("Connected to database")
+	slog.Info("connected to database")
 
 	// マイグレーション実行
 	if err := schema.Migrate(ctx, pool); err != nil {
-		log.Fatalf("Migration failed: %v", err)
+		panic(err)
 	}
 
 	// ハンドラー初期化
@@ -65,9 +77,9 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Server starting on port %s", port)
+		slog.Info("server starting", "port", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
+			panic(err)
 		}
 	}()
 
@@ -75,14 +87,14 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	slog.Info("shutting down server")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		panic(err)
 	}
-	log.Println("Server exited")
+	slog.Info("server exited")
 }
 
 // ミドルウェア: ログ出力
@@ -90,7 +102,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, r)
-		log.Printf("%s %s %v", r.Method, r.URL.Path, time.Since(start))
+		slog.Info("request", "method", r.Method, "path", r.URL.Path, "duration", time.Since(start))
 	})
 }
 

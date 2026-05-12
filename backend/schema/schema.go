@@ -3,7 +3,7 @@ package schema
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -11,12 +11,9 @@ import (
 // Schema テーブル作成用SQL
 // Goの構造体と対応するテーブル定義を一元管理
 var schemas = []string{
-	// 拡張機能
-	`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`,
-
 	// projects テーブル
 	`CREATE TABLE IF NOT EXISTS projects (
-		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		id UUID PRIMARY KEY DEFAULT uuidv7(),
 		name VARCHAR(255) NOT NULL,
 		description TEXT,
 		status VARCHAR(50) NOT NULL DEFAULT 'planning',
@@ -28,7 +25,7 @@ var schemas = []string{
 
 	// milestones テーブル
 	`CREATE TABLE IF NOT EXISTS milestones (
-		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		id UUID PRIMARY KEY DEFAULT uuidv7(),
 		project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
 		name VARCHAR(255) NOT NULL,
 		due_date DATE,
@@ -39,7 +36,7 @@ var schemas = []string{
 
 	// tasks テーブル
 	`CREATE TABLE IF NOT EXISTS tasks (
-		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		id UUID PRIMARY KEY DEFAULT uuidv7(),
 		project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
 		parent_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
 		milestone_id UUID REFERENCES milestones(id) ON DELETE SET NULL,
@@ -60,7 +57,7 @@ var schemas = []string{
 
 	// worklogs テーブル
 	`CREATE TABLE IF NOT EXISTS worklogs (
-		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		id UUID PRIMARY KEY DEFAULT uuidv7(),
 		task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
 		user_name VARCHAR(255) NOT NULL,
 		hours DECIMAL(10, 2) NOT NULL,
@@ -80,7 +77,7 @@ var schemas = []string{
 
 // Migrate スキーマをデータベースに適用
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
-	log.Println("Running migrations...")
+	slog.Info("running migrations")
 
 	for i, schema := range schemas {
 		if _, err := pool.Exec(ctx, schema); err != nil {
@@ -88,13 +85,13 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 	}
 
-	log.Println("Migrations completed successfully")
+	slog.Info("migrations completed")
 	return nil
 }
 
 // Drop 全テーブルを削除（開発用）
 func Drop(ctx context.Context, pool *pgxpool.Pool) error {
-	log.Println("Dropping all tables...")
+	slog.Info("dropping all tables")
 
 	dropStatements := []string{
 		`DROP TABLE IF EXISTS worklogs CASCADE`,
@@ -109,6 +106,6 @@ func Drop(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 	}
 
-	log.Println("All tables dropped")
+	slog.Info("all tables dropped")
 	return nil
 }
