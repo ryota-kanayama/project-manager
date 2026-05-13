@@ -13,3 +13,6 @@ backend/tmp/
 
 # Local PostgreSQL (managed by mise)
 .postgres/
+
+# Local editor configs
+.markdownlint.json
