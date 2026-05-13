@@ -2,39 +2,74 @@ package database
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
-	"os"
+	"log/slog"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	_ "github.com/jackc/pgx/v5/stdlib" // pgx ドライバを database/sql に登録
+	"project-manager/config"
+	"project-manager/ent"
 )
 
-// Connect データベースに接続してプールを返す
-func Connect(ctx context.Context) (*pgxpool.Pool, error) {
-	dbURL := fmt.Sprintf(
+var (
+	client *ent.Client
+	sqlDB  *sql.DB
+)
+
+// Init データベースに接続し、ent スキーマを適用する。
+func Init() error {
+	ctx := context.Background()
+
+	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		GetEnv("DB_USER", "pmuser"),
-		GetEnv("DB_PASSWORD", "pmpassword"),
-		GetEnv("DB_HOST", "localhost"),
-		GetEnv("DB_PORT", "5432"),
-		GetEnv("DB_NAME", "project_manager"),
-		GetEnv("DB_SSLMODE", "disable"),
+		config.Get("DB_USER", "pmuser"),
+		config.Get("DB_PASSWORD", "pmpassword"),
+		config.Get("DB_HOST", "localhost"),
+		config.Get("DB_PORT", "5432"),
+		config.Get("DB_NAME", "project_manager"),
+		config.Get("DB_SSLMODE", "disable"),
 	)
 
-	pool, err := pgxpool.New(ctx, dbURL)
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("unable to connect to database: %w", err)
+		return fmt.Errorf("open sql: %w", err)
 	}
-
-	if err := pool.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("unable to ping database: %w", err)
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return fmt.Errorf("ping db: %w", err)
 	}
+	sqlDB = db
 
-	return pool, nil
+	drv := entsql.OpenDB(dialect.Postgres, db)
+	client = ent.NewClient(ent.Driver(drv))
+	slog.Info("connected to database")
+
+	if err := client.Schema.Create(ctx); err != nil {
+		return fmt.Errorf("ent schema create: %w", err)
+	}
+	slog.Info("ent schema applied")
+	return nil
 }
 
-func GetEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
+// Close ent クライアントをクローズする。
+func Close() {
+	if client != nil {
+		_ = client.Close()
 	}
-	return fallback
+}
+
+// Client ent クライアントを返す。Init 前に呼ぶと nil。
+func Client() *ent.Client {
+	return client
+}
+
+// Ping データベース接続を確認する。ヘルスチェック用。
+func Ping(ctx context.Context) error {
+	if sqlDB == nil {
+		return errors.New("database not initialized")
+	}
+	return sqlDB.PingContext(ctx)
 }
