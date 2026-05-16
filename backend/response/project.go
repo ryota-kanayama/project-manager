@@ -1,4 +1,4 @@
-package model
+package response
 
 import (
 	"time"
@@ -6,9 +6,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// ProjectResponse Project の API レスポンス DTO。
-// ent.Project の Edges を含めずシリアライズするためにサービス層で詰め替える。
-type ProjectResponse struct {
+// Project プロジェクトの API レスポンス。
+// ent.Project の Edges を含めずシリアライズするために、リポジトリ層で詰め替える。
+type Project struct {
 	ID          uuid.UUID  `json:"id"`
 	Name        string     `json:"name"`
 	Description *string    `json:"description,omitempty"`

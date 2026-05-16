@@ -5,6 +5,7 @@ import (
 
 	"project-manager/config"
 	"project-manager/database"
+	"project-manager/logger"
 	"project-manager/server"
 )
 
@@ -13,6 +14,7 @@ func main() {
 	flag.Parse()
 
 	config.Init(*envFile)
+	logger.Init()
 
 	if err := database.Init(); err != nil {
 		panic(err)

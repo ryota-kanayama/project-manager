@@ -12,17 +12,22 @@ import (
 	"time"
 
 	"project-manager/config"
-	"project-manager/database"
 )
 
 // Init HTTP サーバを起動し、シグナル受信でグレースフルにシャットダウンする。
 func Init() error {
-	router := newRouter(database.Client(), config.Get("CORS_ORIGIN", "http://localhost:3000"))
+	// ミドルウェアチェーン: requestID → accessLog → cors → router
+	corsOrigin := config.Get("CORS_ORIGIN", "http://localhost:3000")
+	handler := requestIDMiddleware(
+		accessLogMiddleware(
+			corsMiddleware(corsOrigin)(newRouter()),
+		),
+	)
 
 	port := config.Get("SERVER_PORT", "8080")
 	srv := &http.Server{
 		Addr:         ":" + port,
-		Handler:      router,
+		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
